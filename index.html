@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSSEC HIDS Dashboard</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* ... (Mantenha os estilos CSS anteriores iguais, vou adicionar apenas o estilo para o botão de pausa se destacar) ... */
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --critical: #dc2626;
+            --dark-bg: #0f0f23;
+            --dark-card: #1a1b2e;
+            --dark-border: #2d2d4d;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-muted: #64748b;
+        }
+        
+        /* ... Copie o CSS do arquivo anterior aqui, não mudou nada crítico no layout ... */
+        /* Apenas para garantir, certifique-se que .btn-paused existe ou use o estilo inline */
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: var(--dark-bg); color: var(--text-primary); min-height: 100vh; background-image: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.1) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(239, 68, 68, 0.1) 0%, transparent 20%); }
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, var(--dark-card) 0%, #1e1f35 100%); padding: 30px; border-radius: 20px; margin-bottom: 30px; border: 1px solid var(--dark-border); box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); position: relative; overflow: hidden; }
+        .header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--danger), var(--success)); }
+        .header-content { display: flex; justify-content: space-between; align-items: center; }
+        .logo { display: flex; align-items: center; gap: 15px; }
+        .logo-icon { width: 50px; height: 50px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); }
+        .logo-text h1 { font-size: 2rem; font-weight: 700; background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 5px; }
+        .logo-text p { color: var(--text-muted); font-size: 0.9rem; }
+        .header-stats { display: flex; gap: 20px; }
+        .stat-badge { background: rgba(255, 255, 255, 0.05); padding: 10px 20px; border-radius: 10px; border: 1px solid var(--dark-border); text-align: center; min-width: 120px; }
+        .stat-badge .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+        .stat-badge .label { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-bottom: 30px; }
+        .stat-card { background: linear-gradient(135deg, var(--dark-card) 0%, #1e1f35 100%); padding: 30px; border-radius: 20px; border: 1px solid var(--dark-border); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); transition: all 0.3s ease; position: relative; overflow: hidden; }
+        .stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--primary), transparent); }
+        .stat-card:hover { transform: translateY(-5px); box-shadow: 0 25px 50px rgba(0, 0, 0, 0.3); border-color: var(--primary); }
+        .stat-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        .stat-icon { width: 50px; height: 50px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.3rem; }
+        .stat-icon.agents { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+        .stat-icon.active { background: rgba(16, 185, 129, 0.1); color: var(--success); }
+        .stat-icon.alerts { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .stat-icon.critical { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .stat-value { font-size: 2.5rem; font-weight: 700; margin-bottom: 5px; background: linear-gradient(135deg, var(--text-primary), var(--text-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .stat-label { color: var(--text-muted); font-size: 0.9rem; }
+        .content-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 25px; margin-bottom: 25px; }
+        .card { background: linear-gradient(135deg, var(--dark-card) 0%, #1e1f35 100%); border-radius: 20px; border: 1px solid var(--dark-border); box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2); overflow: hidden; }
+        .card-header { padding: 25px; border-bottom: 1px solid var(--dark-border); display: flex; justify-content: space-between; align-items: center; }
+        .card-header h3 { font-size: 1.3rem; font-weight: 600; display: flex; align-items: center; gap: 10px; }
+        .card-header h3 i { color: var(--primary); }
+        .card-body { padding: 25px; }
+        .filters-section { background: rgba(255, 255, 255, 0.03); padding: 20px; border-radius: 15px; margin-bottom: 20px; border: 1px solid var(--dark-border); }
+        .filters-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .filter-group { display: flex; flex-direction: column; gap: 8px; }
+        .filter-label { font-size: 0.9rem; color: var(--text-secondary); font-weight: 500; }
+        .filter-select { background: rgba(255, 255, 255, 0.05); border: 1px solid var(--dark-border); border-radius: 8px; padding: 10px 12px; color: var(--text-primary); font-size: 0.9rem; }
+        .filter-select:focus { outline: none; border-color: var(--primary); }
+        .filter-actions { display: flex; gap: 10px; justify-content: flex-end; }
+        .agents-list, .alerts-list { display: flex; flex-direction: column; gap: 12px; }
+        .agent-item { background: rgba(255, 255, 255, 0.03); padding: 15px 20px; border-radius: 15px; border: 1px solid var(--dark-border); display: flex; align-items: center; gap: 15px; transition: all 0.3s ease; }
+        .agent-item:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--primary); transform: translateX(5px); }
+        .status-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+        .status-dot.active { background: var(--success); box-shadow: 0 0 8px var(--success); animation: pulse 1.5s infinite; }
+        .status-dot.disconnected { background: var(--danger); }
+        .status-dot.unknown { background: var(--text-muted); }
+        .agent-info { flex: 1; min-width: 0; }
+        .agent-name { font-weight: 600; margin-bottom: 3px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .agent-details { font-size: 0.85rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .agent-status { font-size: 0.8rem; font-weight: 500; padding: 4px 10px; border-radius: 20px; white-space: nowrap; }
+        .status-active { color: var(--success); background: rgba(16, 185, 129, 0.1); }
+        .status-inactive { color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+        .alert-item { background: rgba(255, 255, 255, 0.03); padding: 20px; border-radius: 15px; border-left: 4px solid; border: 1px solid var(--dark-border); transition: all 0.3s ease; }
+        .alert-item:hover { background: rgba(255, 255, 255, 0.05); transform: translateX(5px); box-shadow: 0 5px 15px rgba(0,0,0,0.2); }
+        .alert-low { border-left: 4px solid var(--primary); }
+        .alert-medium { border-left: 4px solid var(--warning); }
+        .alert-high { border-left: 4px solid var(--danger); }
+        .alert-critical { border-left: 4px solid var(--critical); }
+        .alert-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .alert-title { font-weight: 600; color: var(--text-primary); flex: 1; padding-right: 10px; font-size: 1.05rem; }
+        .alert-level { padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; white-space: nowrap; }
+        .level-low { background: rgba(99, 102, 241, 0.1); color: var(--primary); }
+        .level-medium { background: rgba(245, 158, 11, 0.1); color: var(--warning); }
+        .level-high { background: rgba(239, 68, 68, 0.1); color: var(--danger); }
+        .level-critical { background: rgba(220, 38, 38, 0.1); color: var(--critical); }
+        .alert-details { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 15px; }
+        .alert-analysis { background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(99, 102, 241, 0.1) 100%); padding: 15px; border-radius: 12px; margin-top: 10px; border: 1px solid rgba(99, 102, 241, 0.2); }
+        .analysis-header { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 1.1rem; font-weight: 600; color: var(--primary); }
+        .analysis-content { font-size: 0.9rem; line-height: 1.5; color: var(--text-secondary); padding-left: 28px; }
+        .alert-log { background: rgba(0, 0, 0, 0.3); padding: 12px; border-radius: 8px; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.8rem; color: var(--text-secondary); margin-top: 15px; border: 1px solid var(--dark-border); max-height: 150px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; cursor: pointer; }
+        .controls { display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap; }
+        .btn { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); color: white; border: none; padding: 12px 24px; border-radius: 12px; cursor: pointer; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 8px 20px rgba(99, 102, 241, 0.3); }
+        .btn:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(99, 102, 241, 0.4); }
+        .btn-outline { background: transparent; border: 1px solid var(--dark-border); color: var(--text-secondary); box-shadow: none; }
+        .btn-outline:hover { background: rgba(255, 255, 255, 0.05); border-color: var(--primary); color: var(--primary); }
+        .btn-small { padding: 8px 16px; font-size: 0.8rem; }
+        .timestamp, .loading { text-align: center; padding: 20px; color: var(--text-muted); }
+        
+        /* ESTILO PARA O BOTÃO DE PAUSA QUANDO ATIVO */
+        .btn-warning-glow {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+            border: 1px solid var(--warning);
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.2);
+        }
+        
+        @media (max-width: 900px) { .content-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 768px) { .header-content { flex-direction: column; gap: 20px; align-items: flex-start; } .header-stats { width: 100%; justify-content: space-between; } .stats-grid, .filters-grid { grid-template-columns: 1fr; } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); } 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); } }
+        .fade-in { animation: fadeIn 0.5s ease; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header fade-in">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="logo-text">
+                        <h1>OSSEC HIDS</h1>
+                        <p>Security Monitoring Dashboard</p>
+                    </div>
+                </div>
+                <div class="header-stats">
+                    <div class="stat-badge">
+                        <div class="value" id="total-agents">0</div>
+                        <div class="label">Total Agents</div>
+                    </div>
+                    <div class="stat-badge">
+                        <div class="value" id="active-agents">0</div>
+                        <div class="label">Active</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <button class="btn" onclick="loadAllData(true)">
+                <i class="fas fa-sync-alt"></i>
+                Atualizar Agora
+            </button>
+            
+            <button id="btn-pause" class="btn btn-outline" onclick="togglePause()">
+                <i class="fas fa-pause"></i>
+                Pausar Auto-Refresh
+            </button>
+
+            <button class="btn btn-outline" onclick="toggleFilters()">
+                <i class="fas fa-filter"></i>
+                Filtros
+            </button>
+            <button class="btn btn-outline" onclick="showAlerts()">
+                <i class="fas fa-bell"></i>
+                Ver Alertas
+            </button>
+            <button class="btn btn-outline" onclick="showAgents()">
+                <i class="fas fa-desktop"></i>
+                Ver Agentes
+            </button>
+            <a href="/logs" class="btn btn-outline" style="text-decoration: none;">
+                <i class="fas fa-history"></i>
+                Arquivo de Logs
+            </a>
+        </div>
+
+        <div id="filters-section" class="filters-section" style="display: none;">
+            <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-sliders-h"></i> Filtros Avançados
+            </h3>
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label class="filter-label">Nível de Alerta</label>
+                    <select id="level-filter" class="filter-select">
+                        <option value="all">Todos os níveis</option>
+                        <option value="low">Baixo (1-3)</option>
+                        <option value="medium">Médio (4-7)</option>
+                        <option value="high">Alto (8-12)</option>
+                        <option value="critical">Crítico (13+)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Agente</label>
+                    <select id="agent-filter" class="filter-select">
+                        <option value="all">Todos os agentes</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Tipo de Ataque</label>
+                    <select id="attack-filter" class="filter-select">
+                        <option value="all">Todos os tipos</option>
+                        <option value="ssh">SSH Attacks</option>
+                        <option value="web">Web Attacks</option>
+                        <option value="bruteforce">Brute Force</option>
+                        <option value="malware">Malware</option>
+                        <option value="system">System Events</option>
+                        <option value="windows">Windows Events</option>
+                    </select>
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button class="btn btn-small" onclick="applyFilters()">
+                    <i class="fas fa-check"></i>
+                    Aplicar Filtros
+                </button>
+                <button class="btn btn-small btn-outline" onclick="clearFilters()">
+                    <i class="fas fa-times"></i>
+                    Limpar Filtros
+                </button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card fade-in">
+                <div class="stat-header"><div class="stat-icon agents"><i class="fas fa-server"></i></div></div>
+                <div class="stat-value" id="stats-total-agents">0</div><div class="stat-label">Total Agents</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="stat-header"><div class="stat-icon active"><i class="fas fa-check-circle"></i></div></div>
+                <div class="stat-value" id="stats-active-agents">0</div><div class="stat-label">Active Agents</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="stat-header"><div class="stat-icon alerts"><i class="fas fa-exclamation-triangle"></i></div></div>
+                <div class="stat-value" id="stats-alerts-today">0</div><div class="stat-label">Recent Alerts</div>
+            </div>
+            <div class="stat-card fade-in">
+                <div class="stat-header"><div class="stat-icon critical"><i class="fas fa-skull-crossbones"></i></div></div>
+                <div class="stat-value" id="stats-critical-alerts">0</div><div class="stat-label">Critical Alerts</div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="card fade-in">
+                <div class="card-header">
+                    <h3><i class="fas fa-bell"></i> Alertas Recentes</h3>
+                    <div style="font-size: 0.9rem; color: var(--text-muted);">Mostrando <span id="alerts-count">0</span> alertas</div>
+                </div>
+                <div class="card-body">
+                    <div id="alerts-container" class="alerts-list">
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><div>Loading alerts...</div></div>
+                    </div>
+                </div>
+            </div>
+            <div class="card fade-in">
+                <div class="card-header"><h3><i class="fas fa-desktop"></i> Connected Agents</h3></div>
+                <div class="card-body">
+                    <div id="agents-container" class="agents-list">
+                        <div class="loading"><i class="fas fa-spinner fa-spin"></i><div>Loading agents...</div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="timestamp" id="last-update">Last updated: <span id="update-time">Never</span></div>
+    </div>
+
+    <script>
+        const API_BASE = '/api'; 
+        let currentFilters = { level: 'all', agent: 'all', attack: 'all' };
+        
+        // VARIÁVEL DE CONTROLE DE PAUSA
+        let isPaused = false;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadAllData(true);
+            
+            // Modificado para checar se está pausado antes de atualizar
+            setInterval(() => {
+                if (!isPaused) {
+                    loadAllData(false);
+                }
+            }, 30000); // 30 segundos
+        });
+        
+        // FUNÇÃO PARA ALTERNAR PAUSA
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('btn-pause');
+            
+            if (isPaused) {
+                btn.innerHTML = '<i class="fas fa-play"></i> Retomar Auto-Refresh';
+                btn.classList.add('btn-warning-glow');
+            } else {
+                btn.innerHTML = '<i class="fas fa-pause"></i> Pausar Auto-Refresh';
+                btn.classList.remove('btn-warning-glow');
+                loadAllData(true); // Atualiza imediatamente ao retomar
+            }
+        }
+
+        function toggleFilters() {
+            const s = document.getElementById('filters-section');
+            s.style.display = s.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function applyFilters() {
+            currentFilters = {
+                level: document.getElementById('level-filter').value,
+                agent: document.getElementById('agent-filter').value,
+                attack: document.getElementById('attack-filter').value
+            };
+            loadAlerts();
+        }
+
+        function clearFilters() {
+            document.getElementById('level-filter').value = 'all';
+            document.getElementById('agent-filter').value = 'all';
+            document.getElementById('attack-filter').value = 'all';
+            applyFilters();
+        }
+
+        async function loadAllData(force) {
+            // Se estiver pausado e não for forçado (botão manual), não faz nada
+            if (isPaused && !force) return;
+
+            await Promise.all([loadStats(), loadAgents(), loadAlerts()]);
+            updateTimestamp();
+        }
+
+        async function fetchData(endpoint) {
+            try {
+                const r = await fetch(`${API_BASE}/${endpoint}`);
+                if (!r.ok) throw new Error(r.status);
+                const d = await r.json();
+                if (d.status !== 'success') throw new Error(d.message);
+                return d;
+            } catch (e) { console.error(e); return null; }
+        }
+
+        async function loadStats() {
+            const d = await fetchData('stats');
+            if (d) {
+                document.getElementById('total-agents').textContent = d.stats.total_agents;
+                document.getElementById('active-agents').textContent = d.stats.active_agents;
+                document.getElementById('stats-total-agents').textContent = d.stats.total_agents;
+                document.getElementById('stats-active-agents').textContent = d.stats.active_agents;
+                document.getElementById('stats-alerts-today').textContent = d.stats.alerts_today;
+                document.getElementById('stats-critical-alerts').textContent = d.stats.critical_alerts;
+            }
+        }
+
+        async function loadAgents() {
+            const d = await fetchData('agents');
+            const c = document.getElementById('agents-container');
+            if (d && d.agents.length > 0) {
+                c.innerHTML = '';
+                updateAgentFilterOptions(d.agents);
+                d.agents.forEach(a => {
+                    const div = document.createElement('div');
+                    div.className = 'agent-item fade-in';
+                    let stClass = a.status === 'Active' ? 'status-active' : 'status-inactive';
+                    let stDot = a.status === 'Active' ? 'active' : 'disconnected';
+                    
+                    div.innerHTML = `
+                        <div class="status-dot ${stDot}"></div>
+                        <div class="agent-info">
+                            <div class="agent-name">${a.name} (ID: ${a.id})</div>
+                            <div class="agent-details">${a.ip}</div>
+                        </div>
+                        <div class="agent-status ${stClass}">${a.status}</div>`;
+                    c.appendChild(div);
+                });
+            } else c.innerHTML = '<div class="loading">No agents found</div>';
+        }
+
+        function updateAgentFilterOptions(agents) {
+            const sel = document.getElementById('agent-filter');
+            const cur = sel.value;
+            while (sel.children.length > 1) sel.removeChild(sel.lastChild);
+            agents.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.name;
+                opt.textContent = `${a.name} (ID: ${a.id})`;
+                sel.appendChild(opt);
+            });
+            sel.value = cur;
+        }
+
+        async function loadAlerts() {
+            const p = new URLSearchParams(currentFilters);
+            const d = await fetchData(`alerts?${p}`);
+            const c = document.getElementById('alerts-container');
+            const count = document.getElementById('alerts-count');
+            
+            if (d && d.alerts.length > 0) {
+                c.innerHTML = '';
+                count.textContent = d.alerts.length;
+                d.alerts.forEach(a => c.appendChild(createAlertElement(a)));
+            } else {
+                c.innerHTML = '<div class="loading">Nenhum alerta encontrado com estes filtros</div>';
+                count.textContent = '0';
+            }
+        }
+
+        function createAlertElement(alert) {
+            const div = document.createElement('div');
+            const lvl = alert.rule?.level || 0;
+            let lvlClass = lvl >= 13 ? 'critical' : lvl >= 8 ? 'high' : lvl >= 4 ? 'medium' : 'low';
+            let lvlText = lvl >= 13 ? 'Critical' : lvl >= 8 ? 'High' : lvl >= 4 ? 'Medium' : 'Low';
+            
+            div.className = `alert-item alert-${lvlClass} fade-in`;
+            const desc = alert.rule?.description || 'Unknown';
+            const agent = alert.agent?.name || 'unknown';
+            const time = alert.timestamp ? new Date(alert.timestamp).toLocaleString('pt-BR') : 'Unknown';
+            
+            const analysis = analyzeAlert(alert);
+            let analysisHtml = '';
+            if (analysis) {
+                analysisHtml = `
+                    <div class="alert-analysis">
+                        <div class="analysis-header">
+                            <i class="fas ${analysis.emoji}"></i>
+                            <div class="analysis-header-title">${analysis.title}</div>
+                        </div>
+                        <div class="analysis-content">${analysis.recommendation}</div>
+                    </div>`;
+            }
+            
+            div.innerHTML = `
+                <div class="alert-header">
+                    <div class="alert-title">${desc}</div>
+                    <div class="alert-level level-${lvlClass}">${lvlText} (Lvl ${lvl})</div>
+                </div>
+                <div class="alert-details">
+                    <div><i class="fas fa-desktop"></i> <strong>${agent}</strong></div>
+                    <div><i class="fas fa-clock"></i> ${time}</div>
+                </div>
+                ${analysisHtml}
+                <div class="alert-log" title="Clique para expandir">
+                    <strong>Log Bruto:</strong><br>
+                    ${alert.full_log.substring(0, 300)}${alert.full_log.length > 300 ? '...' : ''}
+                </div>`;
+            
+            div.querySelector('.alert-log').addEventListener('click', (e) => {
+                const isExpanded = e.currentTarget.style.maxHeight === 'none';
+                e.currentTarget.style.maxHeight = isExpanded ? '150px' : 'none';
+                e.currentTarget.innerHTML = `<strong>Log Bruto:</strong><br>${alert.full_log}`;
+            });
+            return div;
+        }
+
+        function analyzeAlert(alert) {
+            const log = (alert.full_log || '').toLowerCase();
+            const desc = (alert.rule?.description || '').toLowerCase();
+            const lvl = alert.rule?.level || 0;
+            const ruleId = alert.rule?.id || "0";
+
+            if (lvl >= 13) return { emoji: 'fa-skull-crossbones', title: 'Risco Crítico', recommendation: 'ISOLAR MÁQUINA IMEDIATAMENTE. Investigação forense necessária.' };
+            if (desc.includes('rootkit')) return { emoji: 'fa-user-secret', title: 'Rootkit Detectado', recommendation: 'Alta Prioridade. Possível comprometimento total do kernel/sistema.' };
+            if (desc.includes('ssh') && desc.includes('failed')) return { emoji: 'fa-shield-halved', title: 'Força Bruta SSH', recommendation: 'Múltiplas falhas de login. Bloquear IP de origem no firewall.' };
+            if (desc.includes('sql injection') || desc.includes('xss')) return { emoji: 'fa-code', title: 'Ataque Web', recommendation: 'Verificar logs do servidor web e corrigir vulnerabilidade na aplicação.' };
+            if (desc.includes('windows') && desc.includes('logon failure')) return { emoji: 'fa-door-closed', title: 'Falha Logon Windows', recommendation: 'Monitorar tentativas repetidas. Possível ataque de dicionário.' };
+            if (desc.includes('sudo')) return { emoji: 'fa-user-shield', title: 'Uso de Privilégio', recommendation: 'Verificar se o comando executado como root foi autorizado.' };
+            
+            return null;
+        }
+
+        function updateTimestamp() {
+            document.getElementById('update-time').textContent = new Date().toLocaleString('pt-BR');
+        }
+        
+        function showAgents() { document.getElementById('agents-container').scrollIntoView({ behavior: 'smooth' }); }
+        function showAlerts() { document.getElementById('alerts-container').scrollIntoView({ behavior: 'smooth' }); }
+    </script>
+</body>
+</html>
