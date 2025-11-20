@@ -19,7 +19,7 @@ Este projeto fornece uma interface visual amigável para gerenciar agentes, visu
 * **Python 3.x**.
 * Permissões de `sudo` para o usuário que executará o dashboard (para acessar os binários do OSSEC).
 
-## 🚀 Instalação
+
 ## ⚡ Instalação Automática (Recomendado)
 
 Execute o comando abaixo no seu servidor Ubuntu para instalar e configurar tudo automaticamente:
@@ -27,6 +27,7 @@ Execute o comando abaixo no seu servidor Ubuntu para instalar e configurar tudo 
 ```bash
 sudo apt install git -y && git clone [https://github.com/GabrielVieiraHen/ossec-modern-dashboard.git](https://github.com/GabrielVieiraHen/ossec-modern-dashboard.git) && cd ossec-modern-dashboard && sudo bash install.sh
 ```
+## 🚀 Instalação Manual
 
 1.  **Clone o repositório:**
     ```bash
